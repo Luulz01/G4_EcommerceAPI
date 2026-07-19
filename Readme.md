@@ -2,7 +2,7 @@
 
 ## Autores
 
-- Grupo 4 — Aplicaciones Web, Escuela Politécnica Nacional
+Grupo 4 — Aplicaciones Web, Escuela Politécnica Nacional
 - Benavides Jake
 - Casa Fernando
 - Casa Antonela
@@ -106,7 +106,7 @@ CREATE DATABASE "EcommerceDB";
 
 ### 4. Configurar la cadena de conexión y JWT
 
-Abrir `appsettings.json` y reemplazar los valores de `Username` y `Password` con **tus propias credenciales locales de PostgreSQL** (las que configuraste al instalarlo en tu máquina). Ejemplo, usando el usuario por defecto `postgres`:
+Abrir `appsettings.json` y reemplazar los valores de `Username` y `Password` con **las propias credenciales locales de PostgreSQL** (las que se configuro al instalarlo en su máquina). Ejemplo, usando el usuario por defecto `postgres`:
 
 ```json
 {
@@ -128,7 +128,7 @@ Abrir `appsettings.json` y reemplazar los valores de `Username` y `Password` con
 dotnet ef database update
 ```
 
-Esto crea las tablas `Users`, `Products`, `Receipts` y `ReceiptItems` en tu base de datos `EcommerceDB`.
+Esto crea las tablas `Users`, `Products`, `Receipts` y `ReceiptItems` en la base de datos `EcommerceDB`.
 
 ### 6. Ejecutar el proyecto
 
@@ -136,7 +136,7 @@ Esto crea las tablas `Users`, `Products`, `Receipts` y `ReceiptItems` en tu base
 dotnet run
 ```
 
-La consola te mostrará la URL donde corre la API, por ejemplo:
+La consola mostrará la URL donde corre la API, por ejemplo:
 
 ```
 Now listening on: http://localhost:5248
@@ -150,7 +150,171 @@ Con el proyecto corriendo, abre en el navegador:
 http://localhost:5248/swagger
 ```
 
-Ahí puedes ver y probar los 15 endpoints directamente, incluyendo el botón **"Authorize"** para pegar un token JWT y probar las rutas protegidas.
+Ahí se puede ver y probar los 15 endpoints directamente, incluyendo el botón **"Authorize"** para pegar un token JWT y probar las rutas protegidas.
+
+
+## Alternativa
+## Ejecutar con Docker 
+
+Como valor agregado, el proyecto también puede correr completamente en contenedor Docker (API + PostgreSQL), sin necesidad de instalar .NET SDK ni PostgreSQL localmente — solo requiere tener **Docker Desktop** instalado. 
+
+### 1. Levantar los contenedor
+
+Desde la raíz del proyecto:
+
+```bash
+docker compose up --build
+```
+
+Esto construye la imagen de la API y descarga la imagen oficial de PostgreSQL, levantando ambos servicios conectados en una red interna de Docker. La primera vez puede tardar unos minutos. Dejar esta terminal abierta mientras uses la API.
+
+### 2. Aplicar las migraciones dentro de la base dockerizada
+
+La primera vez que se levante los contenedor, la base de datos estará vacía. Desde otra terminal (dejando `docker compose up` corriendo), generar el script SQL de la migración y aplícarlo directamente dentro del contenedor de PostgreSQL:
+
+```bash
+dotnet ef migrations script --output migration.sql
+docker cp migration.sql ecommerce_postgres:/migration.sql
+docker exec -it ecommerce_postgres psql -U postgres -d EcommerceDB -f /migration.sql
+```
+
+Verificar que las tablas se crearon correctamente:
+
+```bash
+docker exec -it ecommerce_postgres psql -U postgres -d EcommerceDB -c "\dt"
+```
+
+Se debería ver listadas las tablas `Products`, `Users`, `Receipts`, `ReceiptItems`.
+
+### 3. Acceder a la API
+
+Con los contenedor corriendo:
+
+```
+http://localhost:5248/swagger
+```
+
+Funciona igual que en ejecución local, pero ahora la API y la base de datos viven completamente dentro de contenedor Docker.
+
+### 4. Detener los contenedor
+
+Cuando se termine de usar el proyecto, se puede apagar el contenedore sin perder nada de lo subido al repositorio:
+
+```bash
+docker compose down
+```
+
+Los datos de la base de datos persisten entre reinicios gracias al volumen `postgres_data` definido en `docker-compose.yml` (solo se pierden si se corre `docker compose down -v`).
+
+## Endpoints disponibles
+
+### Users
+
+| Método | Ruta | Descripción | Requiere token |
+|---|---|---|---|
+| POST | `/api/users/register` | Registra un nuevo usuario | No |
+| POST | `/api/users/login` | Inicia sesión y devuelve un JWT | No |
+| GET | `/api/users/{id}` | Obtiene un usuario por id | No |
+| PUT | `/api/users/{id}` | Actualiza un usuario | No |
+| DELETE | `/api/users/{id}` | Elimina un usuario | No |
+
+### Products
+
+| Método | Ruta | Descripción | Requiere token |
+|---|---|---|---|
+| POST | `/api/products` | Crea un producto | **Sí** |
+| GET | `/api/products` | Lista todos los productos | No |
+| GET | `/api/products/{id}` | Obtiene un producto por id | No |
+| PUT | `/api/products/{id}` | Actualiza un producto | **Sí** |
+| DELETE | `/api/products/{id}` | Elimina un producto | **Sí** |
+
+### Receipts
+
+| Método | Ruta | Descripción | Requiere token |
+|---|---|---|---|
+| POST | `/api/receipts` | Crea un recibo (calcula total y descuenta stock) | **Sí** |
+| GET | `/api/receipts` | Lista todos los recibos | No |
+| GET | `/api/receipts/{id}` | Obtiene un recibo por id | No |
+| GET | `/api/receipts/user/{userId}` | Lista los recibos de un usuario | No |
+| DELETE | `/api/receipts/{id}` | Elimina un recibo | **Sí** |
+
+**Para usar un endpoint protegido:**
+1. Haz `POST /api/users/register` (o usar un usuario existente) y luego `POST /api/users/login`.
+2. Copiar el valor de `token` de la respuesta.
+3. En Swagger, hacer clic en **"Authorize"** (arriba a la derecha) y pegar **solo el token sin comillas**
+
+
+## Pruebas con Postman
+
+El repositorio incluye dos archivos para importar en Postman:
+
+- `EcommerceAPI.postman_collection.json` — colección con los 15 endpoints ya organizados.
+- `EcommerceAPI.postman_environment.json` — environment con las variables `baseUrl` y `token`.
+
+**Para usarlos:**
+1. Abre Postman → Import → selecciona ambos archivos.
+2. Selecciona el environment **"Local"** en la esquina superior derecha.
+3. Ejecuta primero `users > login`; el script guarda el token automáticamente en la variable `token`.
+4. Ejecuta cualquier otro endpoint protegido; ya usará `{{token}}` automáticamente en la pestaña Authorization.
+
+
+
+
+
+
+
+
+## Ejecutar con Docker (alternativa)
+
+Como valor agregado, el proyecto también puede correr completamente en contenedor Docker (API + PostgreSQL), sin necesidad de instalar .NET SDK ni PostgreSQL localmente — solo requiere tener **Docker Desktop** instalado. Cada integrante del equipo puede levantar su propia copia local siguiendo estos pasos; no depende de que la instancia de otra persona esté encendida.
+
+### 1. Levantar los contenedor
+
+Desde la raíz del proyecto:
+
+```bash
+docker compose up --build
+```
+
+Esto construye la imagen de la API y descarga la imagen oficial de PostgreSQL, levantando ambos servicios conectados en una red interna de Docker. La primera vez puede tardar unos minutos. Deja esta terminal abierta mientras uses la API.
+
+### 2. Aplicar las migraciones dentro de la base dockerizada
+
+La primera vez que levantes los contenedor, la base de datos estará vacía. Desde otra terminal (dejando `docker compose up` corriendo), genera el script SQL de la migración y aplícalo directamente dentro del contenedor de PostgreSQL:
+
+```bash
+dotnet ef migrations script --output migration.sql
+docker cp migration.sql ecommerce_postgres:/migration.sql
+docker exec -it ecommerce_postgres psql -U postgres -d EcommerceDB -f /migration.sql
+```
+
+Verifica que las tablas se crearon correctamente:
+
+```bash
+docker exec -it ecommerce_postgres psql -U postgres -d EcommerceDB -c "\dt"
+```
+
+Deberías ver listadas las tablas `Products`, `Users`, `Receipts`, `ReceiptItems`.
+
+### 3. Acceder a la API
+
+Con los contenedor corriendo:
+
+```
+http://localhost:5248/swagger
+```
+
+Funciona igual que en ejecución local, pero ahora la API y la base de datos viven completamente dentro de contenedor Docker.
+
+### 4. Detener los contenedor
+
+Cuando termines de usar el proyecto, puedes apagar los contenedor sin perder nada de lo subido al repositorio:
+
+```bash
+docker compose down
+```
+
+Los datos de la base de datos persisten entre reinicios gracias al volumen `postgres_data` definido en `docker-compose.yml` (solo se pierden si corres `docker compose down -v`).
 
 ## Endpoints disponibles
 

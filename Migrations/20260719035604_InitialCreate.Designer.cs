@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EcommerceAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260718151840_InitialCreate")]
+    [Migration("20260719035604_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -141,7 +141,7 @@ namespace EcommerceAPI.Migrations
 
             modelBuilder.Entity("EcommerceAPI.Models.Receipt", b =>
                 {
-                    b.HasOne("EcommerceApi.Api.Models.User", "User")
+                    b.HasOne("EcommerceAPI.Models.User", "User")
                         .WithMany("Receipts")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

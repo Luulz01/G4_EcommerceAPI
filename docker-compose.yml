@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: ecommerce_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: EcommerceDB
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    container_name: ecommerce_api
+    restart: always
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=EcommerceDB;Username=postgres;Password=123456"
+      Jwt__Key: "EstaEsUnaClaveSecretaMuyLargaParaFirmarTokensJWT2026"
+      Jwt__Issuer: "EcommerceAPI"
+      Jwt__Audience: "EcommerceAPIUsers"
+      Jwt__ExpireMinutes: "60"
+    ports:
+      - "5248:8080"
+
+volumes:
+  postgres_data:

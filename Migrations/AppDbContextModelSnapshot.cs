@@ -138,7 +138,7 @@ namespace EcommerceAPI.Migrations
 
             modelBuilder.Entity("EcommerceAPI.Models.Receipt", b =>
                 {
-                    b.HasOne("EcommerceApi.Api.Models.User", "User")
+                    b.HasOne("EcommerceAPI.Models.User", "User")
                         .WithMany("Receipts")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -149,13 +149,13 @@ namespace EcommerceAPI.Migrations
 
             modelBuilder.Entity("EcommerceAPI.Models.ReceiptItem", b =>
                 {
-                    b.HasOne("EcommerceApi.Api.Models.Product", "Product")
+                    b.HasOne("EcommerceAPI.Models.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EcommerceApi.Api.Models.Receipt", "Receipt")
+                    b.HasOne("EcommerceAPI.Models.Receipt", "Receipt")
                         .WithMany("Items")
                         .HasForeignKey("ReceiptId")
                         .OnDelete(DeleteBehavior.Cascade)
